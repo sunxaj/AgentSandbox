@@ -84,6 +84,8 @@ def review_node(state: State) -> dict:
 
 在 LangGraph 侧，将 MCP 服务器注册为工具，`execute_via_mcp` 节点调用该工具，提交 `state["pyspark_code"]`，将返回的**结果摘要**（而非完整数据集）写入状态，完整结果留在 MCP 服务器侧供用户下载。执行失败时，将错误信息写入 `state["execution_error"]`，通过条件边路由回 `revise_prompt`。
 
+**执行提交钩子（MCP 调用审计）。** `execute_via_mcp` 在把代码交给 MCP 服务器的瞬间触发一个钩子，记录**被发送执行的命令**的**追加式审计事件**：`user`（发起运行/触发本次尝试的认证操作者）、`time`（UTC 时间）、`syntax`（实际提交的完整 PySpark 代码载荷）、`mcp_target`（MCP 服务器基础 URL）、`mcp_tool_name`（调用的工具，如 `run_query` 或 `get_table_schema`），另加 `thread_id`、`attempt`、`status` 作关联字段。P0 阶段追加写入本地 JSONL 文件（`agents/data/mcp_execution_log.jsonl`）；P1 阶段写入 Postgres 的追加式 `mcp_execution_log` 表，可由 `query_audit_log` 工具查询。它**补充**（而非替代）PostgresSaver 检查点历史：检查点保存每节点的*状态快照*，而钩子保存一条精确的命令级“谁 / 何时 / 什么 / 发给哪个目标与工具”审计行。
+
 **安全约束**：MCP 服务器应连接**只读 Spark 会话**或只读存储挂载，PySpark 代码在服务器侧执行，不将 Parquet 数据拉入 LLM 上下文。
 
 ---
@@ -182,7 +184,7 @@ CLI 的优势在于：它**不绕过审核点**。`interrupt` 在 Server 侧暂�
 | 阶段 | 目标 | 关键交付 |
 |---|---|---|
 | **P0：验证核心循环** | 在 `MemorySaver` 上跑通“检索 → 生成 → 审核中断 → MCP 执行 → 摘要 → 循环”的完整图 | `StateGraph` 骨架、`pyspark-mcp` 连接、`interrupt` 审批节点 |
-| **P1：生产持久化与审计** | 换 `PostgresSaver`，验证检查点表可查询；CLI 客户端可用 | PostgresSaver 配置、审计查询工具、CLI SDK 封装 |
+| **P1：生产持久化与审计** | 换 `PostgresSaver`，验证检查点表可查询；CLI 客户端可用 | PostgresSaver 配置、`mcp_execution_log` 表（user、time、syntax、mcp_target、mcp_tool_name）、审计查询工具、CLI SDK 封装 |
 | **P2：GUI 与体验** | 用 `useStream` 或 CopilotKit 实现审核卡片、结果下载、循环重试界面 | 前端审批组件、节点状态卡片 |
 | **P3：治理与扩展** | 只读 Spark 会话、结果大小上限、`max_retries` 硬限制、检查点保留策略 | 安全边界配置、运维策略 |
 

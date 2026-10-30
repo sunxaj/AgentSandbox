@@ -84,6 +84,8 @@ def review_node(state: State) -> dict:
 
 On the LangGraph side, register the MCP server as a tool. The `execute_via_mcp` node calls this tool, submits `state["pyspark_code"]`, and writes the returned **result summary** (not the full dataset) into state. The full result remains on the MCP server side for user download. On execution failure, write the error message to `state["execution_error"]` and route back to `revise_prompt` via a conditional edge.
 
+**Execution submission hook (MCP call audit).** At the moment `execute_via_mcp` hands the code to the MCP server, a small hook fires. It records an **append-only audit event** of *the command that was sent for execution*: `user` (the authenticated actor who initiated the run / triggered this attempt), `time` (UTC), `syntax` (the full PySpark code payload actually submitted), `mcp_target` (the MCP server base URL), and `mcp_tool_name` (the tool invoked, e.g. `run_query` or `get_table_schema`), plus `thread_id`, `attempt`, and `status` for correlation. In P0 this appends to a local JSONL file (`agents/data/mcp_execution_log.jsonl`); in P1 it writes to an append-only Postgres `mcp_execution_log` table that the `query_audit_log` tool can read. This **complements** the PostgresSaver checkpoint history: checkpoints store per-node *state snapshots*, while the hook stores a precise per-command "who / when / what / against which target and tool" line.
+
 **Security constraint**: The MCP server should connect to a **read-only Spark session** or read-only storage mount. PySpark code executes on the server side, and Parquet data is never pulled into the LLM context.
 
 ---
@@ -182,7 +184,7 @@ If you want to get a complete React chat runtime with approval workflows faster,
 | Phase | Goal | Key Deliverables |
 |---|---|---|
 | **P0: Validate Core Loop** | Run the complete "retrieve → generate → review interrupt → MCP execute → summarize → loop" graph on `MemorySaver` | `StateGraph` skeleton, `pyspark-mcp` connection, `interrupt` approval node |
-| **P1: Production Persistence & Audit** | Switch to `PostgresSaver`, verify checkpoint tables are queryable; CLI client available | PostgresSaver configuration, audit query tools, CLI SDK wrapper |
+| **P1: Production Persistence & Audit** | Switch to `PostgresSaver`, verify checkpoint tables are queryable; CLI client available | PostgresSaver configuration, `mcp_execution_log` table (user, time, syntax, mcp_target, mcp_tool_name), audit query tools, CLI SDK wrapper |
 | **P2: GUI & Experience** | Implement review cards, result download, and loop-retry interfaces using `useStream` or CopilotKit | Frontend approval components, node status cards |
 | **P3: Governance & Scaling** | Read-only Spark session, result size limits, `max_retries` hard limit, checkpoint retention policy | Security boundary configuration, operational policies |
 
