@@ -104,21 +104,23 @@ The server binds to `192.168.0.222:8000`; restrict port 8000 to the LAN at the f
 
 ## Spark MCP and development fixtures
 
-The agent uses a separate PySpark MCP server for executing approved code. Install
-it on the Linux server in its own environment:
+The agent uses a separate PySpark MCP server for executing approved code. The
+package is included in `requirements-mcp.txt`, so it can be installed in the
+existing MCP environment:
 
 ```bash
 ssh xs@192.168.0.222
 cd ~/sandbox
-python3 -m venv venv-spark-mcp
-./venv-spark-mcp/bin/pip install "pyspark-mcp==0.0.6"
+source venv-mcp/bin/activate
+python -m pip install -r requirements-mcp.txt
 ```
 
 Start it on the server so the Mac agent can reach it:
 
 ```bash
 cd ~/sandbox
-./venv-spark-mcp/bin/pyspark-mcp \
+source venv-mcp/bin/activate
+pyspark-mcp \
   --master "local[*]" \
   --host 192.168.0.222 \
   --port 8090
@@ -135,10 +137,12 @@ Create the synthetic Parquet tables and their metadata documents:
 
 ```bash
 cd ~/sandbox
-./venv-spark-mcp/bin/python agents/app/create_dummy_parquet.py
+source venv-mcp/bin/activate
+python agents/app/create_dummy_parquet.py
 ```
 
-The command writes the three tables from `agents/references/data.md` under
+The command writes the three tables from `agents/references/data.md`—12
+customers, 12 products, and 60 transactions—under
 `/home/xs/Documents/data/parquet/` and writes searchable metadata documents
 under `/home/xs/Documents/data/metadata/`.
 

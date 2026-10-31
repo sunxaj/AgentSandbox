@@ -1,3 +1,5 @@
 # Install in the dedicated environment used to run mcp/mcp_server.py.
 mcp>=1.0,<2
 pypdf>=5,<7
+# Provides PySpark and the separate Spark execution MCP server.
+pyspark-mcp==0.0.6

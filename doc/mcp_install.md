@@ -19,6 +19,9 @@ source venv-mcp/bin/activate
 python -m pip install -r requirements-mcp.txt
 ```
 
+The requirements include the document-RAG MCP server dependencies and the
+`pyspark-mcp` package used by the agent's separate Spark execution server.
+
 Configure the MCP client to launch `mcp/mcp_server.py` with the venv Python:
 
 ```json

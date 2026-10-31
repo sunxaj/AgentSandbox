@@ -8,6 +8,7 @@ customer information into the development environment.
 """
 
 import argparse
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from pyspark.sql import SparkSession
@@ -28,12 +29,20 @@ def build_tables(spark):
         StructField("product_id", StringType(), False),
         StructField("registered_time", StringType(), False),
     ])
+    first_names = ["Ava", "Liam", "Mia", "Noah", "Zoe", "Ethan",
+                   "Ivy", "Leo", "Nora", "Owen", "Ruby", "Theo"]
+    last_names = ["Nguyen", "Patel", "Brown", "Kim", "Wilson", "Taylor",
+                  "Singh", "Martin", "Chen", "Davis", "Jones", "Smith"]
     customers = spark.createDataFrame([
-        ("C001", "Ava", "Nguyen", "1 Example Street", "P001", "2025-01-15T09:00:00Z"),
-        ("C002", "Liam", "Patel", "2 Example Street", "P002", "2025-02-03T10:30:00Z"),
-        ("C003", "Mia", "Brown", "3 Example Street", "P003", "2025-02-18T14:15:00Z"),
-        ("C004", "Noah", "Kim", "4 Example Street", "P001", "2025-03-01T08:45:00Z"),
-        ("C005", "Zoe", "Wilson", "5 Example Street", "P004", "2025-03-12T16:20:00Z"),
+        (
+            f"C{number:03d}",
+            first_names[number - 1],
+            last_names[number - 1],
+            f"{number} Example Street",
+            f"P{number:03d}",
+            f"2025-{((number - 1) % 6) + 1:02d}-{((number - 1) % 25) + 1:02d}T09:00:00Z",
+        )
+        for number in range(1, 13)
     ], customer_schema)
 
     product_schema = StructType([
@@ -41,11 +50,23 @@ def build_tables(spark):
         StructField("product_description", StringType(), False),
         StructField("product_category", StringType(), False),
     ])
+    product_names = [
+        ("Laptop stand", "Office"),
+        ("Wireless keyboard", "Office"),
+        ("Travel backpack", "Travel"),
+        ("Noise cancelling headphones", "Audio"),
+        ("USB-C dock", "Office"),
+        ("Packing cubes", "Travel"),
+        ("Web camera", "Office"),
+        ("Portable speaker", "Audio"),
+        ("Desk lamp", "Office"),
+        ("Travel adapter", "Travel"),
+        ("Microphone", "Audio"),
+        ("Notebook set", "Stationery"),
+    ]
     products = spark.createDataFrame([
-        ("P001", "Laptop stand", "Office"),
-        ("P002", "Wireless keyboard", "Office"),
-        ("P003", "Travel backpack", "Travel"),
-        ("P004", "Noise cancelling headphones", "Audio"),
+        (f"P{number:03d}", description, category)
+        for number, (description, category) in enumerate(product_names, 1)
     ], product_schema)
 
     transaction_schema = StructType([
@@ -54,19 +75,21 @@ def build_tables(spark):
         StructField("product_id", StringType(), False),
         StructField("datetime", StringType(), False),
     ])
+    transaction_start = datetime(2025, 4, 1, 9, 10, tzinfo=timezone.utc)
+    # Five transactions per customer gives 60 rows and exercises repeated joins
+    # across customers and products without introducing random test outcomes.
     transactions = spark.createDataFrame([
-        ("T001", "C001", "P001", "2025-04-01T09:10:00Z"),
-        ("T002", "C001", "P002", "2025-04-03T11:20:00Z"),
-        ("T003", "C002", "P002", "2025-04-04T13:05:00Z"),
-        ("T004", "C003", "P003", "2025-04-08T15:40:00Z"),
-        ("T005", "C004", "P001", "2025-04-09T10:00:00Z"),
-        ("T006", "C005", "P004", "2025-04-12T17:25:00Z"),
-        ("T007", "C002", "P003", "2025-04-15T12:15:00Z"),
-        ("T008", "C003", "P004", "2025-04-20T18:30:00Z"),
-        ("T009", "C004", "P002", "2025-04-21T09:45:00Z"),
-        ("T010", "C005", "P001", "2025-04-23T14:10:00Z"),
-        ("T011", "C001", "P004", "2025-04-26T16:55:00Z"),
-        ("T012", "C002", "P001", "2025-04-28T08:35:00Z"),
+        (
+            f"T{((customer_number - 1) * 5) + purchase_number:03d}",
+            f"C{customer_number:03d}",
+            f"P{(((customer_number + purchase_number - 2) % 12) + 1):03d}",
+            (transaction_start + timedelta(
+                days=((customer_number - 1) * 2) + purchase_number,
+                minutes=customer_number * 7,
+            )).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
+        for customer_number in range(1, 13)
+        for purchase_number in range(1, 6)
     ], transaction_schema)
     return {
         "customer": (customers, customer_schema),
