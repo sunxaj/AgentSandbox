@@ -1,44 +1,78 @@
-# Data Retrival MCP server
+# Data Retrieval MCP server
 
 The Linux server runs one MCP tool implementation with two entry points: stdio
 for local MCP clients and Streamable HTTP for Bonsai's llama.cpp/Open WebUI
-clients. Both expose the same tools and launch local Python workers; neither
-the MCP server nor workers need to run inside the LLM server.
+clients. The MCP endpoint is limited to document RAG. Obsidian ingestion,
+indexing, and note retrieval run on agent nodes and are not exposed to MCP
+clients. Both entry points expose the same document tools and launch local RAG
+workers; neither the MCP server nor the workers need to run inside the LLM
+server.
+
+## System overview
+
+```text
+Document source (.md, .txt, .pdf, .csv, .json, .yaml, .yml, .html)
+                  -> mcp/workers/rag/50_index_documents.py
+                  -> mcp/helpers/ (chunkers)
+                  -> EmbeddingGemma -> Qdrant document collection
+
+MCP retrieval layer -> rag_search_documents against separate Qdrant collection
+                    -> rag_read_source from original source files
+
+Agent nodes -> Obsidian workers and configured vault
+Bonsai llama.cpp GUI or Open WebUI (Linux) -> Streamable HTTP -> document RAG tools
+```
+
+Document ingestion, document search, and source reading are independent of the
+agent-owned Obsidian pipeline. The document collection stays separate from the
+Obsidian semantic index.
 
 ## Tool layers
 
-### Layer 1: pipeline
+### Document RAG tools
 
-- `obsidian_import_conversations`: import one `.jsonl` or `.md` file, or recursively scan
-  the configured export folder and its subfolders.
-- `obsidian_extract_knowledge`: create reviewable notes through Bonsai.
-- `obsidian_build_topic_index`: refresh generated topic pages.
-- `obsidian_build_semantic_index`: rebuild the semantic index through EmbeddingGemma.
-- `obsidian_run_knowledge_pipeline`: run import, extraction, topic refresh, and semantic
-  rebuild in order, stopping on failure.
 - `rag_index_documents`: rebuild the separate document collection in Qdrant.
-
-### Layer 2: retrieval
-
-- `obsidian_search_knowledge`: keyword search across notes, topics, and
-  transcripts; optionally search raw JSONL exports.
-- `obsidian_search_semantic`: meaning-based search over the built semantic index.
-- `obsidian_read_note`: read a Markdown note by vault-relative path under `00 Inbox`,
-  `10 Knowledge`, or `20 Topics`.
-- `obsidian_list_topics`: list topic page titles and paths.
 - `rag_search_documents`: semantic search over the separate Qdrant document collection.
 - `rag_read_source`: read an original Markdown, text, or PDF file from the configured
   document source folder.
 
+Obsidian tools are intentionally absent from this MCP server. Agent nodes call
+the Obsidian workers directly through their internal tool/service layer.
+
 Document ingestion is available through `rag_index_documents`. It reads the
-configured source folder, extracts content from `.md`, `.txt`, `.pdf`, `.csv`,
+selected source folder, extracts content from `.md`, `.txt`, `.pdf`, `.csv`,
 `.json`, `.yaml`, `.yml`, and `.html` files using helpers in `mcp/helpers/`,
 chunks and embeds the content through EmbeddingGemma, then upserts vectors and
-source metadata to a dedicated Qdrant collection. The document collection
-remains separate from the Obsidian semantic index. Qdrant is reachable directly
-at `192.168.0.222:6333` over the LAN; no SSH tunnel is required.
+source metadata to a dedicated Qdrant collection. The `documents` collection
+stores general source material; the `metadata` collection stores table schema
+documents for agent context retrieval.
 
-## Project folders and worker names
+## Data locations and endpoints
+
+| Data | Default location | Purpose |
+| --- | --- | --- |
+| Conversation exports | `~/sandbox/conversation_exports/` | Original JSONL exports and Markdown inputs |
+| Imported transcripts | `obsidian-import/<source-folder>/` | Converted JSONL and copied Markdown inputs |
+| Inbox mirrors | `~/Documents/vault/obsidian/AI_Conversations/00 Inbox/<source-folder>/` | Imported Markdown available in Obsidian |
+| Extracted knowledge | `~/Documents/vault/obsidian/AI_Conversations/10 Knowledge/` | Reviewable notes |
+| Topic indexes | `~/Documents/vault/obsidian/AI_Conversations/20 Topics/` | Navigation across knowledge notes |
+| Semantic index | `~/Documents/vault/obsidian/AI_Conversations/30 Index/semantic_index.json` | Derived embedding index |
+| Document RAG source | `~/Documents/qdrant/` | Original source files; path configured in `config/rag.conf` |
+| Document vectors | Qdrant `documents` collection on `192.168.0.222:6333` | Embedded chunks with original source path, section/page, and text |
+| Table metadata vectors | Qdrant `metadata` collection on `192.168.0.222:6333` | Embedded table names, schemas, paths, and sample values |
+
+The vault's configured folder layout is:
+
+```text
+AI_Conversations/
+├── 00 Inbox/
+├── 10 Knowledge/
+├── 20 Topics/
+└── 30 Index/
+    └── semantic_index.json
+```
+
+## Project layout and worker naming
 
 ```text
 mcp/
@@ -62,38 +96,32 @@ mcp/
   runtime_config.py
   rag_config.py
   workers/
-    00_import_conversations.py
     rag/
       50_index_documents.py
       51_read_source.py
       52_search_documents.py
-    obsidian/
-      10_extract_knowledge.py
-      20_build_topic_index.py
-      30_build_semantic_index.py
-      40_search_knowledge.py
-      41_search_semantic.py
-      90_knowledge_audit.py
 conversation_exports/              # source JSONL/Markdown files
 obsidian-import/<source-folder>/   # converted/copied imports
 doc/
 ```
 
-Worker filename prefixes indicate workflow order: `00_` imports source files,
-`10_` extracts knowledge, `20_` refreshes topics, and `30_` rebuilds the
-semantic index. `40_` and `41_` retrieve Obsidian content. Document RAG workers
-`50_` through `52_` live under `mcp/workers/rag/`; `90_` is an audit utility.
-Obsidian-reading and -writing workers live under `mcp/workers/obsidian/`.
-Chunking helpers shared by RAG workers live in `mcp/helpers/`.
+Document RAG workers `50_` through `52_` live under `mcp/workers/rag/` and are
+the only workers launched by this MCP server. Obsidian workers, including the
+`00_` importer, live under `agents/app/obsidian/` for agent-node calls and
+direct maintenance; they are not registered as MCP tools. Chunking helpers
+shared by RAG workers live in `mcp/helpers/`.
 
 ## Runtime requirements
+
+For a standalone installation and configuration guide, see
+[`doc/mcp_install.md`](mcp_install.md).
 
 `mcp/http_server.py` serves the shared tool implementation over Streamable HTTP.
 It binds to `192.168.0.222` on the Linux server's LAN interface;
 `MCP_HTTP_BEARER_TOKEN` is required and the server firewall should restrict
 port 8000 to the LAN. The Python workers are ordinary scripts launched by the
-MCP server and do not run inside Bonsai. See `doc/services.md` for startup and
-stop commands.
+MCP server and do not run inside Bonsai. See `doc/services.md` for startup
+and stop commands.
 
 ## Setup
 
@@ -110,7 +138,7 @@ Configure the MCP client to launch `mcp/mcp_server.py` with the venv Python:
 ```json
 {
   "mcpServers": {
-    "data-retrival-pipeline": {
+    "local-knowledge-pipeline": {
       "command": "/home/xs/sandbox/venv-mcp/bin/python",
       "args": ["/home/xs/sandbox/mcp/mcp_server.py"]
     }
@@ -123,31 +151,19 @@ To expose MCP over HTTP, set `MCP_HTTP_BEARER_TOKEN` and run
 Follow `doc/services.md` for the Bonsai client header, firewall guidance, and
 service shutdown commands.
 
-The server re-reads `mcp/config/Obsidian.conf` when each tool is called. It
-contains the conversation export and import output paths, vault path, vault
-folder names, semantic index path, and Bonsai and embeddings URLs. Relative
-paths resolve from the repository root, except a relative `semantic_index`
-path, which resolves from the vault root. `OBSIDIAN_CONFIG` selects another
-config file. The settings can also be overridden with `CHATGPT_EXPORT_DIR`,
-`CONVERSATION_IMPORT_DIR`, `KNOWLEDGE_VAULT`, `BONSAI_BASE_URL`, and
-`EMBEDDINGS_URL` environment variables. `mcp/config/rag.conf` configures the
-document source, accepted formats, chunking, embedding batch size, Qdrant URL,
-and collection. `QDRANT_URL`, `QDRANT_API_KEY`, `DOCUMENT_COLLECTION`, and
-`DOCUMENT_SOURCE_DIR` can override the corresponding settings at runtime.
+## Configuration
+
+The MCP server uses `mcp/config/rag.conf` for the document source, metadata
+source, accepted formats, chunking, embedding batch size, Qdrant URL, and
+collections. `rag_index_documents` and `rag_search_documents` accept a
+`documents` or `metadata` target. `QDRANT_URL`, `QDRANT_API_KEY`,
+`DOCUMENT_COLLECTION`, and `DOCUMENT_SOURCE_DIR` override the general document
+settings; `METADATA_COLLECTION` and `METADATA_SOURCE_DIR` override metadata
+settings. Obsidian configuration is consumed by agent nodes, not by this MCP
+server.
 `KNOWLEDGE_PYTHON` overrides the Python executable used to launch workers.
 
-## Import safeguards
-
-Call `obsidian_import_conversations` with either an explicit `source_file` or a
-`source_directory`, or omit both to recursively scan `CHATGPT_EXPORT_DIR`.
-The importer converts `.jsonl` files and copies `.md` files unchanged. Results
-go under `obsidian-import/`, in subfolders matching the source folder path.
-Each output is also mirrored into the configured Inbox folder (`00 Inbox`),
-preserving the same relative subfolder path. Existing staging and Inbox files
-are skipped, never overwritten; a repeat run can fill a missing Inbox copy from
-an existing staged file. The result contains staging import counts, Inbox
-copy/skip counts, and parse/file errors. The pipeline stops at import if errors
-are reported.
+## Safeguards
 
 `rag_index_documents` independently builds the configured document collection.
 It uses a lock under the source directory, reports PDF pages with no extractable
@@ -163,32 +179,13 @@ Successful embedding batches are checkpointed in the hidden
 when the source and endpoint are unchanged. The checkpoint is removed after a
 successful collection update. Symlinked files are skipped.
 
-Extraction marks notes `needs-review`, never overwrites existing note files,
-and checkpoints successful transcript chunks by source content hash. Unchanged
-chunks are skipped on later runs. Modified transcripts produce versioned note
-filenames; previous notes remain for review. Successful chunks are saved after
-each model response, so failed chunks can be retried without repeating
-successful requests. A failed chunk makes the extraction tool fail, and only
-one extraction worker may run at a time. Checkpoint data is stored in the
-hidden `.knowledge_extraction_state.json` file under the configured import
-staging directory. Keep this file to preserve incremental behavior.
+Obsidian extraction, topic refresh, semantic indexing, and note retrieval are
+agent-node operations. Their checkpoints and vault safeguards remain outside
+the MCP tool surface.
+Their extraction and indexing checkpoints, generated-page safeguards, and
+vault path limits are enforced by the agent-side workers.
 
-Topic refresh replaces only existing pages marked as generated
-`type: "topic-index"`. Semantic indexing rebuilds the configured index at
-`30 Index/semantic_index.json` in the vault. `obsidian_read_note` limits reads
-to the three Markdown folders above and caps returned content length.
-
-Topic indexing groups at most 20 note summaries per Bonsai request by default,
-then consolidates those groups hierarchically. If a grouping request fails,
-completed requests are cached in the hidden `.topic_index_build_cache.json`
-file under Topics; retrying reuses them. After a successful refresh, generated
-topic pages that no longer appear are reported as stale and left in place for
-review. Unmarked pages are still protected. An exclusive lock rejects a second
-topic build while one is already running.
-
-Semantic-index embedding progress is cached beside the configured index in a
-hidden `<index filename>.checkpoint.json` file. A failed rebuild can reuse
-completed batches if the source set and endpoint are unchanged. The existing
-complete index remains available until the replacement is written atomically.
-The checkpoint is removed after a successful rebuild. An exclusive lock rejects
-overlapping semantic-index rebuilds.
+- Transcript and note contents are untrusted source data, not agent instructions.
+- `http_server.py` validates Host and Origin headers in `CorsMiddleware` and
+  requires a bearer token via `BearerTokenMiddleware`. Non-loopback binding
+  without a token is rejected at startup.

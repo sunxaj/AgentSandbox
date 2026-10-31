@@ -29,7 +29,7 @@ User Input ──► [ retrieve_context ] ──► [ generate_pyspark ] ──�
 
 Goal: Based on the user's question, retrieve the relevant **table names, categories, storage paths (Parquet paths), and schemas** as constrained context for generating PySpark code.
 
-The recommended approach is the **schema-embedding RAG** pattern: vectorize each table's metadata (table name, category, path, column names, types, sample values) as a `Document` into a vector store. During retrieval, recall the Top-K most relevant tables by semantic similarity. The retrieval results are injected into the `generate_pyspark` node's prompt, rather than dumping the entire data catalog into the context — this avoids context bloat and routing confusion.
+The recommended approach is the **schema-embedding RAG** pattern: vectorize each table's metadata (table name, category, path, column names, types, sample values) as a `Document` into the dedicated `metadata` collection. During retrieval, recall the Top-K most relevant tables by semantic similarity. The retrieval results are injected into the `generate_pyspark` node's prompt, rather than dumping the entire data catalog into the context — this avoids context bloat and routing confusion.
 
 ```python
 # One-time offline metadata construction at index-building time

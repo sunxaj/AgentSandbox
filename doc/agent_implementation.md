@@ -1,6 +1,6 @@
 # Implementation Plan — Data Analysis, Review & Reporting Agent
 
-> Derived from the design in doc/agent_en.md (with the node-level specification
+> Derived from the design in doc/agent.md (with the node-level specification
 > from doc/agent_cn.md) and the existing `agents/` codebase. This is a plan
 > document only — no implementation code is included.
 
@@ -23,7 +23,9 @@ graph. `PostgresSaver` checkpoints double as the audit log.
 
 ## 2. Current baseline
 
-Existing in `agents/app/`:
+The original agent application files are currently absent from the working
+tree; the following components are the planned baseline and compatibility
+surfaces for the implementation:
 
 - `agent.py` — current MCP retrieval agent: generic `call_llm` → `call_tool`
   loop over MCP tools, session-only state (no persistence)
@@ -34,10 +36,12 @@ Existing in `agents/app/`:
 - `agent_config.py` + `agents/config/agent.conf` — `[llm]`, `[mcp]`, `[agent]`
   sections, re-read on every call
 
-Existing on the Linux server (see doc/mcp.md, doc/install.md):
+Existing on the Linux server (see `doc/mcp.md` and `doc/agent_install.md`):
 
-- MCP HTTP server with document tools: `obsidian_*` and
-  `rag_index_documents` / `rag_search_documents` / `rag_read_source`
+- MCP HTTP server with document tools: `rag_index_documents`,
+  `rag_search_documents`, and `rag_read_source`
+- Agent-node Obsidian workers for conversation import, note extraction,
+  indexing, and vault retrieval; these are not MCP tools
 - Qdrant (:6333), Bonsai (:8081), MCP HTTP (:8000)
 
 Gaps vs. the target design:
@@ -49,6 +53,23 @@ Gaps vs. the target design:
 - No `interrupt`-based human review
 - No `PostgresSaver` checkpoints / audit
 - No `langgraph-sdk` CLI client or LangGraph Agent Server
+
+## 2.1 Coding and documentation requirements
+
+New or substantially changed code must include detailed, purposeful comments
+for non-obvious intent, assumptions, data flow, invariants, side effects,
+failure handling, and security or path-confinement checks. Comments must stay
+accurate as the implementation evolves and should not merely restate each line
+of code.
+
+Implementation changes that affect behavior, interfaces, worker names,
+configuration, architecture, setup, or operational procedures must update the
+affected Markdown files under `doc/` in the same change. Documentation examples,
+paths, commands, and public names must remain synchronized with the code.
+
+The reusable workflow is defined in
+`agents/skills/coding-style/SKILL.md`.
+
 ## 3. Engineering decisions to lock in first (Phase 0, before graph code)
 
 **D1 — Spark execution backend** (decision ① in the design doc): the current
@@ -64,7 +85,7 @@ environment has no Spark cluster.
 
 **D2 — GUI path** (decision ② in the design doc):
 
-- The GUI is the React frontend suggested in agent_en.md: the official frontend
+- The GUI is the React frontend suggested in agent.md: the official frontend
   SDK (`@langchain/react`, `useStream`) for a "graph-native" review card, or
   **CopilotKit** for a ready-made React chat runtime with approval workflows. The
   backend graph is unchanged by this choice.
@@ -90,11 +111,12 @@ development if server RAG proves insufficient.
    query, read first N rows.
 3. Prepare sample data: a directory of 2–6 parquet tables across 2 categories,
    with a short README defining categories and the canonical data directory.
-4. Write a table-metadata extraction script (outside the graph): scan the
-   parquet directory and emit one document per table — table name, category,
-   parquet path, columns with types, sample values.
-5. Run `rag_index_documents`; confirm `rag_search_documents` returns the correct
-   table name, path, and schema for a fixed set of test questions.
+4. Write or run `agents/app/create_dummy_parquet.py` to create the three
+   development tables listed in `agents/references/data.md` and one metadata
+   document per table.
+5. Run `rag_index_documents(collection="metadata")`; confirm
+   `rag_search_documents(collection="metadata")` returns the correct table
+   name, path, and schema for a fixed set of test questions.
 6. Config: add `[db]` (postgres DSN, placeholder), `[data]` (parquet dir),
    `[spark]` (MCP URL) and `[limits]` (max_retries, max_result_rows) sections
    to `agent.conf`.
@@ -184,10 +206,10 @@ is the single source of truth.
   MCP command (user, time, syntax, mcp_target, mcp_tool_name) for a given
   `thread_id`
 
-### Phase 3 (P2) — GUI experience (React frontend per agent_en.md)
+### Phase 3 (P2) — GUI experience (React frontend per agent.md)
 
 1. Build the React frontend with the official `@langchain/react` (`useStream`)
-   or CopilotKit (the GUI suggested in agent_en.md):
+   or CopilotKit (the GUI suggested in agent.md):
    - Review card: pyspark code block, retrieved tables, approve / reject / edit
    - Node status cards: `retrieve_context` (tables), `execute_via_mcp`
      (status), `summarize` (summary + download)

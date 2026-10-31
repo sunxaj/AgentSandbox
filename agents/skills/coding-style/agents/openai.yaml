@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coding Style"
+  short_description: "Comment new code and update project docs"
+  default_prompt: "Use $coding-style when implementing code that needs detailed comments and synchronized /doc updates."
