@@ -81,8 +81,10 @@ cd ~/sandbox
 ```
 
 **Explicit server launch** (`start_mcp.sh`) — passes the venv Python and
-`mcp/mcp_server.py` directly to Inspector, overriding any catalog entry. Use
-this to test the server without relying on a saved catalog:
+`mcp/mcp_server.py` directly to Inspector, overriding any catalog entry. The
+script invokes Inspector's packaged launcher entry directly to avoid a broken
+npm `.bin` shim on installations where relative launcher imports are not
+preserved. Use this to test the server without relying on a saved catalog:
 
 ```bash
 cd ~/sandbox
@@ -124,7 +126,9 @@ allow inbound connections on port 8000 from trusted LAN addresses only.
 Two launcher scripts are provided depending on how Inspector is configured.
 
 **Explicit launch** (`start_mcp.sh`) — passes the venv Python and
-`mcp/mcp_server.py` directly to Inspector:
+`mcp/mcp_server.py` directly to Inspector. The script uses Inspector's
+packaged launcher entry directly so npm `.bin` shim issues do not prevent
+relative launcher imports:
 
 ```bash
 cd ~/sandbox
@@ -133,7 +137,8 @@ bash ./start_mcp.sh
 
 **Catalog-based launch** (`start_mcps.sh`) — uses the Inspector v2 saved
 catalog at `~/.mcp-inspector/mcp.json`, which holds the server connection
-settings. Use this when the catalog is already configured:
+settings. It uses the same packaged launcher entry. Use this when the catalog
+is already configured:
 
 ```bash
 cd ~/sandbox
