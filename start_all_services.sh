@@ -68,4 +68,4 @@ log "MCP HTTP server started (PID $MCP_HTTP_PID, log: $SCRIPT_DIR/mcp_http_serve
 # ---------------------------------------------------------------------------
 log "Starting MCP server..."
 MCP_INSPECTOR_PID_FILE="$RUNTIME_DIR/mcp_inspector.pid" \
-    bash "$SCRIPT_DIR/start_mcp.sh &&"
+    bash "$SCRIPT_DIR/start_mcp.sh" &

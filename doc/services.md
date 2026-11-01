@@ -120,6 +120,16 @@ cd ~/sandbox
 bash stop_all_services.sh
 ```
 
+Check the status of all four services without changing them:
+
+```bash
+cd ~/sandbox
+bash check_all_services.sh
+```
+
+The check returns exit code `1` if Qdrant, the embedding server, the MCP HTTP
+server, or the Inspector is unavailable.
+
 The endpoint is `http://192.168.0.222:8000/mcp`. In Bonsai's built-in
 llama.cpp chat UI, open **Settings → MCP Client**, add that URL, enable the
 MCP server for a conversation, and set the custom `Authorization` header to
