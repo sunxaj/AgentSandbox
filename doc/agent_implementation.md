@@ -111,7 +111,7 @@ development if server RAG proves insufficient.
    query, read first N rows.
 3. Prepare sample data: a directory of 2–6 parquet tables across 2 categories,
    with a short README defining categories and the canonical data directory.
-4. Write or run `agents/app/create_dummy_parquet.py` to create the three
+4. Write or run `agents/app/create_dummy_data_parquet.py` to create the three
    development tables listed in `agents/references/data.md`—12 customers, 12
    products, and 60 transactions—and one metadata document per table.
 5. Run `rag_index_documents(collection="metadata")`; confirm

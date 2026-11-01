@@ -4,8 +4,6 @@ import configparser
 import os
 from pathlib import Path
 
-from runtime_config import get_server_url
-
 MCP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = MCP_DIR.parent
 RAG_CONFIG = MCP_DIR / "config" / "rag.conf"
@@ -46,5 +44,9 @@ def load_rag_config(target="documents"):
         "collection": collection_value,
         "qdrant_url": os.getenv("QDRANT_URL", parser.get("servers", "qdrant_url")).rstrip("/"),
         "qdrant_api_key": os.getenv("QDRANT_API_KEY", parser.get("servers", "qdrant_api_key", fallback="")),
-        "embeddings_url": get_server_url("embeddings_url"),
+        # Keep the RAG configuration self-contained so this server has no
+        # dependency on agent-only runtime configuration.
+        "embeddings_url": os.getenv(
+            "EMBEDDINGS_URL", parser.get("servers", "embeddings_url")
+        ).rstrip("/"),
     }

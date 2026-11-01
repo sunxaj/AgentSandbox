@@ -15,11 +15,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# Preserve direct CLI execution after the worker move by locating the shared
-# runtime configuration relative to the repository, not the working directory.
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MCP_DIR = PROJECT_ROOT / "mcp"
-sys.path.insert(0, str(MCP_DIR))
+# Preserve direct CLI execution after the worker move by locating the
+# agent-owned runtime configuration, not the working directory.
+OBSIDIAN_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(OBSIDIAN_DIR))
 from runtime_config import get_path, get_server_url, get_value
 
 VAULT_DEFAULT = get_path("vault")

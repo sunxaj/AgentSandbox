@@ -27,7 +27,7 @@ Configure the MCP client to launch `mcp/mcp_server.py` with the venv Python:
 ```json
 {
   "mcpServers": {
-    "local-knowledge-pipeline": {
+    "local-data-pipeline": {
       "command": "/home/xs/sandbox/venv-mcp/bin/python",
       "args": ["/home/xs/sandbox/mcp/mcp_server.py"]
     }
@@ -48,6 +48,8 @@ collections. Use `rag_index_documents(collection="metadata")` to index table
 schema documents separately from general documents. `QDRANT_URL`,
 `QDRANT_API_KEY`, `DOCUMENT_COLLECTION`, and `DOCUMENT_SOURCE_DIR` override the
 general document settings; `METADATA_COLLECTION` and `METADATA_SOURCE_DIR`
-override the metadata settings. Obsidian configuration is consumed by agent
-nodes, not by this MCP server.
+override the metadata settings. Obsidian configuration is stored at
+`agents/config/Obsidian.conf` and is consumed by agent nodes, not by this MCP
+server. MCP RAG embedding settings are stored in `mcp/config/rag.conf`.
 `KNOWLEDGE_PYTHON` overrides the Python executable used to launch workers.
+Spark fixture output paths are configured separately in `mcp/config/spark.conf`.

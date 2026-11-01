@@ -99,7 +99,7 @@ bearer token:
 
 ```bash
 cd ~/sandbox
-export MCP_HTTP_BEARER_TOKEN=<token>
+export MCP_HTTP_BEARER_TOKEN=test
 bash ./start_mcp_http_server.sh
 ```
 
@@ -108,7 +108,7 @@ server, and MCP Inspector in sequence:
 
 ```bash
 cd ~/sandbox
-MCP_HTTP_BEARER_TOKEN=<token> bash start_all.sh
+MCP_HTTP_BEARER_TOKEN=test bash start_all.sh
 ```
 
 The endpoint is `http://192.168.0.222:8000/mcp`. In Bonsai's built-in
@@ -140,8 +140,8 @@ cd ~/sandbox
 bash ./start_mcps.sh
 ```
 
-Both scripts activate `venv-mcp` and set `OBSIDIAN_CONFIG` to the project
-config. Keep the terminal open while using Inspector. Stop Inspector and its
-child MCP server with **Ctrl+C** in that terminal. See the official
+Both scripts activate `venv-mcp`; they do not load the agent-owned Obsidian
+configuration. Keep the terminal open while using Inspector. Stop Inspector
+and its child MCP server with **Ctrl+C** in that terminal. See the official
 [Inspector README](https://github.com/modelcontextprotocol/inspector/blob/main/README.md)
 for catalog setup and connection options.

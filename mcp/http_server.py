@@ -14,13 +14,15 @@ import hmac
 import ipaddress
 import json
 import os
+from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from mcp.server.transport_security import TransportSecuritySettings
 import uvicorn
 
 from mcp_server import mcp
-from runtime_config import PROJECT_ROOT
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class CorsMiddleware:

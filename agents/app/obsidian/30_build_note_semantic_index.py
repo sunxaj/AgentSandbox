@@ -8,11 +8,9 @@ the old index atomically so a failed build leaves the previous index usable.
 import argparse, atexit, fcntl, hashlib, json, os, re, sys, time, urllib.error, urllib.request
 from pathlib import Path
 
-# The worker is agent-owned, but runtime_config remains the shared configuration
-# module. Add the repository's MCP package explicitly for direct script runs.
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MCP_DIR = PROJECT_ROOT / "mcp"
-sys.path.insert(0, str(MCP_DIR))
+# Load the agent-owned runtime module explicitly for direct script runs.
+OBSIDIAN_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(OBSIDIAN_DIR))
 from runtime_config import get_path, get_server_url, get_value, get_vault_folder
 
 VAULT_DEFAULT = get_path('vault')

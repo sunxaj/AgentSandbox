@@ -1,12 +1,12 @@
-"""Shared runtime configuration for the MCP server and its workers."""
+"""Runtime configuration for agent-owned Obsidian workers."""
 
 import configparser
 import os
 from pathlib import Path
 
-MCP_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = MCP_DIR.parent
-DEFAULT_CONFIG = MCP_DIR / "config" / "Obsidian.conf"
+OBSIDIAN_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = OBSIDIAN_DIR.parents[2]
+DEFAULT_CONFIG = PROJECT_ROOT / "agents" / "config" / "Obsidian.conf"
 
 # Environment overrides are explicit so an alternate endpoint/path can be
 # configured without adding machine-specific values to worker source files.
@@ -20,7 +20,7 @@ ENV_OVERRIDES = {
 
 
 def config_path():
-    """Return the selected Obsidian config, defaulting to this repository's config."""
+    """Return the selected Obsidian config, defaulting to the agent config."""
     configured = os.getenv("OBSIDIAN_CONFIG")
     return Path(configured).expanduser().resolve() if configured else DEFAULT_CONFIG
 

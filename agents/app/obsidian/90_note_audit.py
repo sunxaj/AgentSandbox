@@ -8,11 +8,10 @@ import sys
 from pathlib import Path
 from collections import Counter
 
-# This audit runs on the agent side but reuses the shared vault configuration
-# from mcp/runtime_config.py; resolve that package from the repository root.
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MCP_DIR = PROJECT_ROOT / "mcp"
-sys.path.insert(0, str(MCP_DIR))
+# This audit runs on the agent side; load the sibling runtime module explicitly
+# so direct execution does not depend on the current directory.
+OBSIDIAN_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(OBSIDIAN_DIR))
 from runtime_config import get_vault_folder
 
 knowledge = get_vault_folder("knowledge")

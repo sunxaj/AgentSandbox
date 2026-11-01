@@ -138,13 +138,15 @@ Create the synthetic Parquet tables and their metadata documents:
 ```bash
 cd ~/sandbox
 source venv-mcp/bin/activate
-python agents/app/create_dummy_parquet.py
+python agents/app/create_dummy_data_parquet.py
 ```
 
 The command writes the three tables from `agents/references/data.md`—12
 customers, 12 products, and 60 transactions—under
 `/home/xs/Documents/data/parquet/` and writes searchable metadata documents
-under `/home/xs/Documents/data/metadata/`.
+under `/home/xs/Documents/data/metadata/`. These paths come from
+`mcp/config/spark.conf`; use `--config` or `SPARK_CONFIG` only when testing a
+different layout.
 
 Index the metadata into its separate Qdrant collection:
 

@@ -77,8 +77,8 @@ AI_Conversations/
 ```text
 mcp/
   config/
-    Obsidian.conf               # Vault paths, service URLs
     rag.conf                    # Separate document RAG source settings
+    spark.conf                  # Spark fixture paths
     mcp_http.conf               # Streamable HTTP bind and host allowlist
   helpers/                      # Shared chunking helpers for RAG workers
     chunk_csv.py
@@ -93,13 +93,16 @@ mcp/
     test_chunking_strategy.py
   mcp_server.py                 # Shared tools and stdio entry point
   http_server.py                # Streamable HTTP entry point
-  runtime_config.py
   rag_config.py
   workers/
     rag/
       50_index_documents.py
       51_read_source.py
       52_search_documents.py
+agents/
+  config/
+    Obsidian.conf               # Agent-owned vault and service settings
+  app/obsidian/                  # Agent-only Obsidian workers
 conversation_exports/              # source JSONL/Markdown files
 obsidian-import/<source-folder>/   # converted/copied imports
 doc/
@@ -107,8 +110,9 @@ doc/
 
 Document RAG workers `50_` through `52_` live under `mcp/workers/rag/` and are
 the only workers launched by this MCP server. Obsidian workers, including the
-`00_` importer, live under `agents/app/obsidian/` for agent-node calls and
-direct maintenance; they are not registered as MCP tools. Chunking helpers
+`00_` importer, live under `agents/app/obsidian/` and use
+`agents/config/Obsidian.conf` for agent-node calls and direct maintenance;
+they are not registered as MCP tools. Chunking helpers
 shared by RAG workers live in `mcp/helpers/`.
 
 ## Runtime requirements
@@ -159,8 +163,9 @@ collections. `rag_index_documents` and `rag_search_documents` accept a
 `documents` or `metadata` target. `QDRANT_URL`, `QDRANT_API_KEY`,
 `DOCUMENT_COLLECTION`, and `DOCUMENT_SOURCE_DIR` override the general document
 settings; `METADATA_COLLECTION` and `METADATA_SOURCE_DIR` override metadata
-settings. Obsidian configuration is consumed by agent nodes, not by this MCP
-server.
+settings. The Obsidian configuration is `agents/config/Obsidian.conf` and is
+consumed only by agent nodes, not by this MCP server. Embedding endpoint
+settings for MCP RAG workers are kept in `mcp/config/rag.conf`.
 `KNOWLEDGE_PYTHON` overrides the Python executable used to launch workers.
 
 ## Safeguards

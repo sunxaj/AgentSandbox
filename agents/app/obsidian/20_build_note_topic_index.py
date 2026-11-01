@@ -10,11 +10,10 @@ import sys
 import urllib.request
 from pathlib import Path
 
-# Keep shared configuration in the MCP package while locating this agent-owned
-# worker from its new directory rather than relying on the current directory.
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MCP_DIR = PROJECT_ROOT / "mcp"
-sys.path.insert(0, str(MCP_DIR))
+# Load the agent-owned runtime module from the worker directory rather than
+# relying on the current directory or the MCP package.
+OBSIDIAN_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(OBSIDIAN_DIR))
 from runtime_config import get_server_url, get_vault_folder
 
 BASE_URL = get_server_url("bonsai_base_url")

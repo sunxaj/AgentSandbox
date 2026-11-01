@@ -15,10 +15,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# This importer is agent-owned, but it shares path configuration with the RAG
-# service. Locate the repository root explicitly so direct CLI runs are stable.
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(PROJECT_ROOT / "mcp"))
+# This importer is agent-owned. Load its sibling runtime module explicitly so
+# direct CLI runs do not depend on the MCP package or the current directory.
+OBSIDIAN_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(OBSIDIAN_DIR))
 from runtime_config import get_path, get_vault_folder
 
 OUTPUT_DIR = get_path("import_output")

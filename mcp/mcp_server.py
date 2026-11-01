@@ -2,43 +2,30 @@
 """Local stdio MCP server that exposes document RAG tools.
 
 The server validates public tool arguments, starts the matching RAG worker, and
-returns its structured result. Obsidian workers are intentionally excluded:
-agent nodes own vault access and invoke those workers through their internal
-tool/service layer instead of exposing them to remote MCP clients.
+returns its structured result. Agent-only services are outside this MCP
+process and are invoked directly by agent nodes.
 """
 
 import os
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
-from runtime_config import PROJECT_ROOT, get_path
 
-ROOT = PROJECT_ROOT
+ROOT = Path(__file__).resolve().parents[1]
 WORKERS = ROOT / "mcp" / "workers"
 # Document RAG workers are the only workers exposed through this MCP server.
-# Obsidian workers are agent-node responsibilities and are intentionally not
-# registered here, preventing remote MCP clients from accessing the vault.
 DOCUMENT_WORKERS = WORKERS / "rag"
-VAULT = get_path("vault")
 PYTHON = os.getenv("KNOWLEDGE_PYTHON", sys.executable)
 
 mcp = FastMCP("local-knowledge-pipeline")
 
 
-def _refresh_paths():
-    """Reload machine-specific paths before a tool runs, so config edits take effect."""
-    global VAULT
-    VAULT = get_path("vault")
-
-
 def _run_document_tool(script, *args, timeout=7200):
     """Run a document RAG worker; its configuration is loaded from config/rag.conf."""
-    _refresh_paths()
     env = os.environ.copy()
-    env["KNOWLEDGE_VAULT"] = str(VAULT)
-    # RAG workers are isolated from the Obsidian worker directory by design.
     command = [PYTHON, str(DOCUMENT_WORKERS / script), *map(str, args)]
     result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True,
                             text=True, timeout=timeout)

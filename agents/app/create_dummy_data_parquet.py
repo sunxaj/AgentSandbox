@@ -8,7 +8,9 @@ customer information into the development environment.
 """
 
 import argparse
+import configparser
 from datetime import datetime, timedelta, timezone
+import os
 from pathlib import Path
 
 from pyspark.sql import SparkSession
@@ -133,14 +135,26 @@ Parquet path: `{parquet_path}`
 
 
 def main():
-    """Write fixtures atomically enough for repeatable local development runs."""
+    """Write fixtures using the shared Spark configuration paths."""
+    project_root = Path(__file__).resolve().parents[2]
+    default_config = project_root / "mcp" / "config" / "spark.conf"
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--parquet-dir", default="/home/xs/Documents/data/parquet")
-    parser.add_argument("--metadata-dir", default="/home/xs/Documents/data/metadata")
+    parser.add_argument(
+        "--config",
+        default=os.getenv("SPARK_CONFIG", str(default_config)),
+        help="Path to spark.conf; defaults to mcp/config/spark.conf.",
+    )
     args = parser.parse_args()
 
-    parquet_dir = Path(args.parquet_dir).expanduser().resolve()
-    metadata_dir = Path(args.metadata_dir).expanduser().resolve()
+    config_path = Path(args.config).expanduser().resolve()
+    parser_config = configparser.ConfigParser()
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Spark configuration not found: {config_path}")
+    parser_config.read(config_path, encoding="utf-8")
+    # Both outputs are configured together so generated Parquet paths and the
+    # metadata documents always describe the same server-side fixture layout.
+    parquet_dir = Path(parser_config.get("paths", "parquet_dir")).expanduser().resolve()
+    metadata_dir = Path(parser_config.get("paths", "metadata_dir")).expanduser().resolve()
     parquet_dir.mkdir(parents=True, exist_ok=True)
     metadata_dir.mkdir(parents=True, exist_ok=True)
 

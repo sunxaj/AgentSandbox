@@ -21,11 +21,10 @@ import re
 import sys
 from pathlib import Path
 
-# Resolve the shared MCP configuration package from the repository root after
-# moving this read-only Obsidian worker into the agent application.
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-MCP_DIR = PROJECT_ROOT / "mcp"
-sys.path.insert(0, str(MCP_DIR))
+# Resolve the agent-owned runtime configuration after moving this read-only
+# Obsidian worker into the agent application.
+OBSIDIAN_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(OBSIDIAN_DIR))
 from runtime_config import get_path, get_vault_folder
 
 VAULT = get_path("vault")
