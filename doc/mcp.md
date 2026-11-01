@@ -142,7 +142,7 @@ Configure the MCP client to launch `mcp/mcp_server.py` with the venv Python:
 ```json
 {
   "mcpServers": {
-    "local-knowledge-pipeline": {
+    "local-data-pipeline": {
       "command": "/home/xs/sandbox/venv-mcp/bin/python",
       "args": ["/home/xs/sandbox/mcp/mcp_server.py"]
     }
