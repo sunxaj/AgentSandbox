@@ -11,5 +11,11 @@ if [[ ! -f "$INSPECTOR_ENTRY" ]]; then
   echo "MCP Inspector is not installed. Run npm install in $PWD first." >&2
   exit 1
 fi
+# start_all_services.sh supplies this path so the companion stop script can
+# terminate the foreground Inspector and its child MCP server precisely.
+if [[ -n "${MCP_INSPECTOR_PID_FILE:-}" ]]; then
+  mkdir -p "$(dirname "$MCP_INSPECTOR_PID_FILE")"
+  printf '%s\n' "$$" > "$MCP_INSPECTOR_PID_FILE"
+fi
 exec node "$INSPECTOR_ENTRY" \
   "$PWD/venv-mcp/bin/python" "$PWD/mcp/mcp_server.py"

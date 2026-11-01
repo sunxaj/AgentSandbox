@@ -105,13 +105,30 @@ export MCP_HTTP_BEARER_TOKEN=test
 bash ./start_mcp_http_server.sh
 ```
 
-Or via `start_all.sh`, which starts Qdrant, the embedding server, the HTTP MCP
+Or via `start_all_services.sh`, which starts Qdrant, the embedding server, the HTTP MCP
 server, and MCP Inspector in sequence:
 
 ```bash
 cd ~/sandbox
-MCP_HTTP_BEARER_TOKEN=test bash start_all.sh
+MCP_HTTP_BEARER_TOKEN=test bash start_all_services.sh
 ```
+
+Stop the services started by that stack launcher with:
+
+```bash
+cd ~/sandbox
+bash stop_all_services.sh
+```
+
+Check the status of all four services without changing them:
+
+```bash
+cd ~/sandbox
+bash check_all_services.sh
+```
+
+The check returns exit code `1` if Qdrant, the embedding server, the MCP HTTP
+server, or the Inspector is unavailable.
 
 The endpoint is `http://192.168.0.222:8000/mcp`. In Bonsai's built-in
 llama.cpp chat UI, open **Settings → MCP Client**, add that URL, enable the

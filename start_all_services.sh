@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# start_all.sh — start the full knowledge stack on the Linux server.
+# start_all_services.sh — start the full knowledge stack on the Linux server.
 #
 #   1. Qdrant              (docker compose, detached)
 #   2. Embedding server    (llama-server, background)
 #   3. MCP HTTP server     (http_server.py, background)
 #   4. MCP stdio server    (inspector + mcp_server.py, foreground)
 #
-# Usage:  bash start_all.sh
+# Usage:  bash start_all_services.sh
 #
 # Notes:
 #   - The embedding server blocks in the foreground, so it is started in the
@@ -25,6 +25,11 @@ set -euo pipefail
 # be run with the project root as the working directory.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+# Keep process IDs outside the repository so runtime state is not mistaken for
+# source code. The stop script uses these files to target only this stack.
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/knowledge-stack"
+mkdir -p "$RUNTIME_DIR"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -44,20 +49,23 @@ log "Starting embedding server (background)..."
 nohup bash "$SCRIPT_DIR/start_embedding_server.sh" \
     > "$SCRIPT_DIR/embedding_server.log" 2>&1 &
 EMBED_PID=$!
+printf '%s\n' "$EMBED_PID" > "$RUNTIME_DIR/embedding_server.pid"
 log "Embedding server started (PID $EMBED_PID, log: $SCRIPT_DIR/embedding_server.log)"
 
 # ---------------------------------------------------------------------------
 # 3. MCP HTTP server (background — serves Streamable HTTP for Bonsai GUI)
 # ---------------------------------------------------------------------------
-export MCP_HTTP_BEARER_TOKEN="test"
+export MCP_HTTP_BEARER_TOKEN=test
 log "Starting MCP HTTP server (background)..."
 nohup bash "$SCRIPT_DIR/start_mcp_http_server.sh" \
     > "$SCRIPT_DIR/mcp_http_server.log" 2>&1 &
 MCP_HTTP_PID=$!
+printf '%s\n' "$MCP_HTTP_PID" > "$RUNTIME_DIR/mcp_http_server.pid"
 log "MCP HTTP server started (PID $MCP_HTTP_PID, log: $SCRIPT_DIR/mcp_http_server.log)"
 
 # ---------------------------------------------------------------------------
 # 4. MCP stdio server (foreground — inspector is an interactive TUI)
 # ---------------------------------------------------------------------------
 log "Starting MCP server..."
-bash "$SCRIPT_DIR/start_mcp.sh"
+MCP_INSPECTOR_PID_FILE="$RUNTIME_DIR/mcp_inspector.pid" \
+    bash "$SCRIPT_DIR/start_mcp.sh" &
