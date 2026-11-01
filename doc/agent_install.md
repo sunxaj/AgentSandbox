@@ -11,7 +11,7 @@
 ```bash
 ssh xs@192.168.0.222
 cd ~/sandbox
-bash start_all.sh
+bash start_all_services.sh
 ```
 
 Confirm the MCP HTTP server is up:
@@ -79,7 +79,7 @@ Phase 1 is tested through the development CLI instead.
 ```bash
 # Terminal 1 — keep the Linux server running
 ssh xs@192.168.0.222
-cd ~/sandbox && bash start_all.sh
+cd ~/sandbox && bash start_all_services.sh
 
 # Terminal 2 — Mac
 cd ~/sandbox
